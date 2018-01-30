@@ -9,9 +9,12 @@
 import os
 import socket
 import subprocess
+import shlex
 
 from pytest_multihost import transport
 from pytest_multihost.util import check_config_dict_empty, shell_quote
+
+from pytest_multihost.ssh_command import SSHCommand
 
 try:
     basestring
@@ -155,23 +158,12 @@ class BaseHost(object):
 
     @property
     def transport(self):
-        """Provides means to manipulate files & run processs on the remote host
-
-        Accessing this property might connect to the remote Host
-        (usually via SSH).
         """
-        try:
-            return self._transport
-        except AttributeError:
-            cls = self.transport_class
-            if cls:
-                # transport_class is None in the base class and must be
-                # set in subclasses.
-                # Pylint reports that calling None will fail
-                self._transport = cls(self)  # pylint: disable=E1102
-            else:
-                raise NotImplementedError('transport class not available')
-            return self._transport
+        transport property is for some reason is used in ipatests
+        fake it for compatibility
+        """
+        return self
+
 
     def reset_connection(self):
         """Reset the connection
@@ -187,12 +179,58 @@ class BaseHost(object):
             pass
 
     def get_file_contents(self, filename, encoding=None):
-        """Shortcut for transport.get_file_contents"""
-        return self.transport.get_file_contents(filename, encoding=encoding)
+    
+        if not self.file_exists(filename):
+            raise IOError
+
+        self.log.info("GET {}".format(filename))
+
+        cmd = self._exec_command(
+            "cat {}".format(filename), 
+            encoding=None
+        )
+
+        if cmd.returncode:
+            return None
+
+        contents = b''.join(cmd.out_data)
+        if encoding:
+            return contents.decode(encoding)
+        return contents
+
 
     def put_file_contents(self, filename, contents):
-        """Shortcut for transport.put_file_contents"""
-        self.transport.put_file_contents(filename, contents)
+        if not contents:
+            return
+
+        self.log.info("PUT {}".format(filename))
+
+        self._exec_command(
+            "tee 1>>/dev/null {}".format(filename),
+            stdin_data=contents,
+            encoding=None
+        )
+
+
+    def file_exists(self, filename):
+        """Return true if the named remote file exists"""
+
+        self.log.info('STAT {}'.format(filename))
+
+        cmd = self._exec_command(
+            "test -f {}".format(filename))
+
+        if cmd.returncode == 0:
+            return True
+        return False
+
+
+    def mkdir(self, path):
+        self.log.info('MKDIR {}'.format(path))
+        self._exec_command("mkdir -p {}".format(path))
+           
+    def mkdir_recursive(self, path):
+        self.mkdir(path)
 
     def collect_log(self, filename):
         """Call all registered log collectors on the given filename"""
@@ -200,8 +238,8 @@ class BaseHost(object):
             collector(self, filename)
 
     def run_command(self, argv, set_env=True, stdin_text=None,
-                    log_stdout=True, raiseonerr=True,
-                    cwd=None, bg=False):
+                    log_stdout=True, raiseonerr=True, cwd=None, 
+                    bg=False):
         """Run the given command on this host
 
         Returns a Command instance. The command will have already run in the
@@ -220,43 +258,58 @@ class BaseHost(object):
         :param cwd: The working directory for the command
         :param bg: If True, runs command in background
         """
-        command = self.transport.start_shell(argv, log_stdout=log_stdout)
-        # Set working directory
+        
+        cmd_str = ""
+
         if cwd is None:
             cwd = self.test_dir
-        command.stdin.write('cd %s\n' % shell_quote(cwd))
 
-        # Set the environment
-        if set_env:
-            command.stdin.write('. %s\n' % shell_quote(self.env_sh_path))
+        if cwd:
+            self.mkdir(cwd)
+            cmd_str += "cd {} && ".format(cwd)
+
+        if set_env and self.file_exists(self.env_sh_path):
+            cmd_str += "source {} && ".format(self.env_sh_path)
 
         if self.command_prelude:
-            command.stdin.write(self.command_prelude)
+            cmd_str += "{} && ".format(self.command_prelude)
 
         if isinstance(argv, basestring):
-            # Run a shell command given as a string
-            command.stdin.write('(')
-            command.stdin.write(argv)
-            command.stdin.write(')')
+            cmd_str += "( {} )".format(argv)
+            cmd = shlex.split(cmd_str)
         else:
-            # Run a command given as a popen-style list (no shell expansion)
-            for arg in argv:
-                command.stdin.write(shell_quote(arg))
-                command.stdin.write(' ')
+            cmd = shlex.split(cmd_str) + ['('] + argv + [')']
 
-        command.stdin.write(';exit\n')
-        if stdin_text:
-            command.stdin.write(stdin_text)
-        command.stdin.flush()
+        return self._exec_command(cmd, stdin_data=stdin_text, bg=bg)
+
+
+    def _exec_command(self, command, stdin_data=None,
+                        bg=False, encoding='utf-8'):
+
+#        import pydevd
+#        pydevd.settrace('10.43.21.202', port=3333, stdoutToServer=True, 
+#                stderrToServer=True)
+
+        cmd = SSHCommand(self.hostname, user=self.ssh_username, 
+                identity=self.ssh_key_filename,
+                command=command, encoding=encoding, logger=self.log)
+
+        if stdin_data:
+            cmd.send(stdin_data)
+
         if not bg:
-            command.wait(raiseonerr=raiseonerr)
-        return command
+            cmd.wait()
+            self.log.info("RETURNCODE {}".format(cmd.returncode))
+            if cmd.returncode:
+                self.log.info("STDERR {}".format(cmd.stderr_text))
+                #import ipdb; ipdb.set_trace()
 
+        return cmd
 
 
 class Host(BaseHost):
     """A Unix host"""
-    command_prelude = 'set -e\n'
+    command_prelude = 'set -e'
 
 
 class WinHost(BaseHost):
