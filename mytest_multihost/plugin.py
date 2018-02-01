@@ -8,7 +8,7 @@ import traceback
 
 import pytest
 
-from pytest_multihost.config import Config, FilterError
+from mytest_multihost.config import Config, FilterError
 
 try:
     import yaml

@@ -55,73 +55,38 @@ class SSHCommand():
         # do not set encoding for popen. It should be binary
         self.cmd = Popen(ssh_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
+        # do not use cmd.communicate() method, instead read data ourself.
+        # because we may want to do multiple calls to self.send()
         self.out_thread = threading.Thread(
-            target=self._do_recv_data, 
+            target=self._do_recv, 
             args=(self.cmd.stdout, self.out_data)
         )
         self.out_thread.start()
 
         self.err_thread = threading.Thread(
-            target=self._do_recv_data, 
+            target=self._do_recv, 
             args=(self.cmd.stderr, self.err_data)
         )
         self.err_thread.start()
 
     def log(self, msg):
         if self.logger:
-            self.logger.info("CMD {}".format(msg))
+            self.logger.debug("CMD {}".format(msg))
 
-    def _do_recv_err(self):
-        #print("_do_recv_err started")
-        while True:
-            data = self.cmd.stderr.read()
-            
-            if data == b'': #and not self.cmd.poll()
-                break
-            
-            # error output is always text
-            if self.encoding:
-                data = data.decode(self.encoding)
-            else:
-                data = data.decode()
-            
-            self.err_data.append(data)
-        #print("_do_recv_err stopped")
 
-    def _do_recv_data(self, stream, store):
+    def _do_recv(self, stream, store):
         """Read data out of stream until eof
 
         @param stream: stream object to read from
-        @return array of bytearrays
+        @param store array of bytearrays
         """
 
         while True:
             data = stream.read()
-
             if data == b'':
                 break
-
             store.append(data)
 
-
-    def _do_recv_out(self):
-        #print("_do_recv_out started")
-        while True:
-            data = self.cmd.stdout.read()
-            
-            if data == b'': # and not self.cmd.poll()
-                break
-            
-           # if self.encoding:
-           #     try:
-           #         data = data.decode(self.encoding)
-           #     except UnicodeDecodeError:
-           #         self.encoding = None
-           #         pass
-
-            self.out_data.append(data)
-
-        #print("_do_recv_out stopped")
 
     def send(self, data=None):
         """
@@ -143,7 +108,7 @@ class SSHCommand():
 
 
     def wait(self):
-        """ 
+        """
         TODO: prevent this to be executed twice.
         """
 
@@ -155,6 +120,10 @@ class SSHCommand():
             self.cmd.stderr.close()
 
             self.returncode = self.cmd.wait()
+
+            self.log("RETURNCODE {}".format(self.returncode))
+            if self.returncode:
+                self.log("STDERR {}".format(self.stderr_text))
 
         return self.returncode
 
@@ -169,11 +138,12 @@ class SSHCommand():
                 except UnicodeDecodeError:
                     # Probably a command returned binary data
                     # (hello, ipatests) just return bytes and continue.
-                    pass    
+                    pass
             return stdout
 
         return ""
-    
+
+
     @property
     def stderr_text(self):
         if self.returncode is not None:

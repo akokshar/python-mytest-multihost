@@ -11,10 +11,9 @@ import socket
 import subprocess
 import shlex
 
-from pytest_multihost import transport
-from pytest_multihost.util import check_config_dict_empty, shell_quote
+from mytest_multihost.util import check_config_dict_empty, shell_quote
 
-from pytest_multihost.ssh_command import SSHCommand
+from mytest_multihost.ssh_command import SSHCommand
 
 try:
     basestring
@@ -27,7 +26,6 @@ class BaseHost(object):
 
     See README for an overview of the core classes.
     """
-    transport_class = transport.SSHTransport
     command_prelude = ''
 
     def __init__(self, domain, hostname, role, ip=None,
@@ -173,10 +171,8 @@ class BaseHost(object):
         changes, such as external_hostname, ssh_username, etc., that were made
         on the Host.
         """
-        try:
-            del self._transport
-        except:
-            pass
+    
+        pass
 
     def get_file_contents(self, filename, encoding=None):
     
@@ -226,9 +222,9 @@ class BaseHost(object):
 
 
     def mkdir(self, path):
-        self.log.info('MKDIR {}'.format(path))
+        self.log.debug('MKDIR {}'.format(path))
         self._exec_command("mkdir -p {}".format(path))
-           
+
     def mkdir_recursive(self, path):
         self.mkdir(path)
 
@@ -239,7 +235,7 @@ class BaseHost(object):
 
     def run_command(self, argv, set_env=True, stdin_text=None,
                     log_stdout=True, raiseonerr=True, cwd=None, 
-                    bg=False):
+                    bg=False, encoding='utf-8'):
         """Run the given command on this host
 
         Returns a Command instance. The command will have already run in the
@@ -258,7 +254,9 @@ class BaseHost(object):
         :param cwd: The working directory for the command
         :param bg: If True, runs command in background
         """
-        
+    
+        self.log.info("RUN {}".format(argv))
+
         cmd_str = ""
 
         if cwd is None:
@@ -299,10 +297,6 @@ class BaseHost(object):
 
         if not bg:
             cmd.wait()
-            self.log.info("RETURNCODE {}".format(cmd.returncode))
-            if cmd.returncode:
-                self.log.info("STDERR {}".format(cmd.stderr_text))
-                #import ipdb; ipdb.set_trace()
 
         return cmd
 

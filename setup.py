@@ -10,15 +10,15 @@ with io.open('README.rst', 'rt', encoding='utf-8') as f:
     readme_contents = f.read()
 
 setup_args = dict(
-    name = "pytest-multihost",
-    version = "1.1.1",
+    name = "mytest-multihost",
+    version = "1.0.0",
     description = "Utility for writing multi-host tests for pytest",
     long_description = readme_contents,
     url = "https://pagure.io/python-pytest-multihost",
     license = "GPL",
     author = "Petr Viktorin",
     author_email = "pviktori@redhat.com",
-    packages = ["pytest_multihost"],
+    packages = ["mytest_multihost"],
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',

@@ -10,7 +10,7 @@ import copy
 from pytest_multihost import config
 
 DEFAULT_OUTPUT_DICT = {
-    "test_dir": "/root/multihost_tests",
+    "test_dir": "/tmp/multihost_tests",
     "ssh_key_filename": "~/.ssh/id_rsa",
     "ssh_password": None,
     'ssh_username': 'root',

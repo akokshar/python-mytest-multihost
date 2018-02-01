@@ -10,9 +10,9 @@
 %{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %endif
 
-%global srcname pytest-multihost
-%global modulename pytest_multihost
-%global srcversion 1.1.1
+%global srcname mytest-multihost
+%global modulename mytest_multihost
+%global srcversion 1.0.0
 %global versionedname %{srcname}-%{srcversion}
 
 Name: python-%{srcname}

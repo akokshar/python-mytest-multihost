@@ -9,7 +9,7 @@
 import collections
 import logging
 
-from pytest_multihost.util import check_config_dict_empty
+from mytest_multihost.util import check_config_dict_empty
 
 
 class FilterError(ValueError):
@@ -40,7 +40,7 @@ class Config(object):
 
         # This unfortunately duplicates information in _setting_infos,
         # but is left here for the sake of static analysis.
-        self.test_dir = kwargs.get('test_dir', '/root/multihost_tests')
+        self.test_dir = kwargs.get('test_dir', '/tmp/multihost_tests')
         self.ssh_key_filename = kwargs.get('ssh_key_filename')
         self.ssh_password = kwargs.get('ssh_password')
         self.ssh_username = kwargs.get('ssh_username', 'root')
@@ -187,7 +187,7 @@ class Domain(object):
 
     @property
     def host_classes(self):
-        from pytest_multihost.host import Host, WinHost
+        from mytest_multihost.host import Host, WinHost
         return {
             'default': Host,
             'windows': WinHost,

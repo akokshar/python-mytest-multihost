@@ -1,6 +1,6 @@
 # This automates the maintainer's build & release process
 
-PROJECT=pytest-multihost
+PROJECT=mytest-multihost
 FEDORA_PROJECT=python-${PROJECT}
 VERSION=$(shell python -c "import setup; print(setup.setup_args['version'])")
 VERSIONEDNAME=${PROJECT}-${VERSION}
@@ -48,6 +48,13 @@ srpm: tarball
 	mkdir -p rpmbuild/SRPMS
 	cp ${TARBALLNAME} rpmbuild/SOURCES/
 	rpmbuild --define "_topdir ${PWD}/rpmbuild" -bs ${FEDORA_PROJECT}.spec
+
+rpm: tarball
+	rm -rvf rpmbuild
+	mkdir -p rpmbuild/SOURCES
+	mkdir -p rpmbuild/SRPMS
+	cp ${TARBALLNAME} rpmbuild/SOURCES/
+	rpmbuild --define "_topdir ${PWD}/rpmbuild" -bb ${FEDORA_PROJECT}.spec
 
 mock: srpm
 	cp $(TARBALLNAME) $$(rpm -E '%{_topdir}')/SOURCES
