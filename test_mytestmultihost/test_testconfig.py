@@ -7,7 +7,7 @@
 import json
 import copy
 
-from pytest_multihost import config
+from mytest_multihost import config
 
 DEFAULT_OUTPUT_DICT = {
     "test_dir": "/tmp/multihost_tests",

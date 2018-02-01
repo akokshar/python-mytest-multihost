@@ -4,7 +4,7 @@
 
 import pytest
 
-from pytest_multihost.config import Config, FilterError
+from mytest_multihost.config import Config, FilterError
 
 
 @pytest.fixture
