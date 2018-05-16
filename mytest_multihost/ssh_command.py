@@ -143,6 +143,13 @@ class SSHCommand():
 
         return ""
 
+    @stdout_text.setter
+    def stdout_text(self, value):
+        self.out_data = []
+        if self.encoding:
+            self.out_data.append(value.encode(self.encoding))
+        else:
+            self.out_data.append(value.encode())
 
     @property
     def stderr_text(self):
